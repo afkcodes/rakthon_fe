@@ -8,6 +8,7 @@ import {
 } from '@nextui-org/react';
 import { useState } from 'react';
 import { Drawer } from 'vaul';
+import http from '../helpers/http';
 import LoadingMessage from './LoadingMessage';
 import RadioSelect from './RadioSelect';
 
@@ -30,6 +31,7 @@ const DrawerForm = () => {
     artist: '',
     lang: '',
     img: null,
+    audio: '',
     selectedImages: [],
     isSubmitting: false,
   });
@@ -90,6 +92,26 @@ const DrawerForm = () => {
     }
   };
 
+  const handleFileChange = (event: any) => {
+    const audio = event.target.files[0];
+    const currentFormData = {
+      ...formData,
+      audio,
+    };
+    setFormData(currentFormData);
+  };
+
+  const handleSubmit = async () => {
+    const newFormData = new FormData();
+    newFormData.append('audio', formData.audio);
+    newFormData.append('contentName', formData.title);
+    newFormData.append('artist', formData.artist);
+    newFormData.append('language', formData.lang);
+
+    const res = await http('', { body: formData, method: 'POST' });
+    setIsLoading(true);
+  };
+
   return (
     <Drawer.Root dismissible={false}>
       <Drawer.Trigger asChild>
@@ -129,6 +151,7 @@ const DrawerForm = () => {
                     className='block w-full text-sm p-2 text-gray-400 rounded-xl cursor-pointer bg-[#252428] hover:bg-[#3f3f46] focus:outline-none'
                     type='file'
                     disabled={formData.isSubmitting}
+                    onChange={handleFileChange}
                   />
                   <p
                     className='mt-1 text-sm text-gray-500 dark:text-gray-300'
@@ -149,6 +172,7 @@ const DrawerForm = () => {
                       isLoading={formData.isSubmitting}
                       onClick={() => {
                         updateFormStatus(true);
+                        handleSubmit();
                       }}>
                       Upload
                     </Button>
