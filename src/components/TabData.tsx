@@ -1,17 +1,23 @@
 import { Card, CardBody, Tab, Tabs } from '@nextui-org/react';
 
-const TabData = ({ data }: { data: { en: string; jp: string } }) => {
+const TabData = ({
+  data,
+}: {
+  data: { summary: string; transcription: string };
+}) => {
   return (
-    <div className='flex w-full flex-col'>
+    <div className='flex w-[600px] flex-col'>
       <Tabs aria-label='Options'>
-        <Tab key='jp' title='Japanese'>
+        <Tab key='jp' title='Summary'>
           <Card>
-            <CardBody>{data.jp}</CardBody>
+            <CardBody className='overflow-scroll h-96'>{data.summary}</CardBody>
           </Card>
         </Tab>
-        <Tab key='en' title='English'>
+        <Tab key='en' title='Transcription'>
           <Card>
-            <CardBody>{data.en}</CardBody>
+            <CardBody className='overflow-scroll h-96'>
+              {data.transcription}
+            </CardBody>
           </Card>
         </Tab>
       </Tabs>

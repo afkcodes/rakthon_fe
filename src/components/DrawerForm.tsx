@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Button,
+  Chip,
   Input,
   Popover,
   PopoverContent,
@@ -9,29 +10,29 @@ import {
 import { useState } from 'react';
 import { Drawer } from 'vaul';
 import http from '../helpers/http';
+import ImageCard from './ImageCard';
 import LoadingMessage from './LoadingMessage';
 import RadioSelect from './RadioSelect';
+import TabData from './TabData';
 
 const DrawerForm = () => {
   const [imgIds, setImgIds] = useState<any>([]);
 
   const [responseData, setResponseData] = useState({
-    transcription: {
-      en: '',
-      jp: '',
-    },
-    summary: {
-      en: '',
-      jp: '',
-    },
+    transcription: '',
+    summary: '',
+    status: '',
+    id: '',
   });
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     artist: '',
     lang: '',
     img: null,
     audio: '',
+    images: [],
+    tags: [],
     selectedImages: [],
     isSubmitting: false,
   });
@@ -103,13 +104,81 @@ const DrawerForm = () => {
 
   const handleSubmit = async () => {
     const newFormData = new FormData();
-    newFormData.append('audio', formData.audio);
-    newFormData.append('contentName', formData.title);
-    newFormData.append('artist', formData.artist);
-    newFormData.append('language', formData.lang);
+    const { lang, title, artist } = formData;
+    newFormData.append('file', formData.audio);
+    newFormData.append(
+      'metaData',
+      JSON.stringify({ language: lang, contentName: title, artist })
+    );
 
-    const res = await http('', { body: formData, method: 'POST' });
-    setIsLoading(true);
+    try {
+      const response = await fetch(
+        'https://ff9c-122-187-108-203.ngrok-free.app/creator/content/info',
+        {
+          method: 'POST',
+          body: newFormData,
+        }
+      );
+
+      if (response.ok) {
+        const result: any = await response.json();
+        setResponseData({
+          id: result.data.id,
+          summary: result.data.summary,
+          transcription: result.data.transcription,
+          status: result.status,
+        });
+        updateFormStatus(false);
+        setIsLoading(false);
+      } else {
+        throw new Error('Upload failed.');
+      }
+    } catch (error) {
+      console.log('error');
+    }
+  };
+
+  const generateArtWork = async () => {
+    const res: any = await http(
+      'https://ff9c-122-187-108-203.ngrok-free.app/creator/content/images',
+      {
+        method: 'POST',
+        body: {
+          summary: responseData.summary,
+          id: responseData.id,
+          count: 5,
+          theme: 'ANIME',
+        },
+      }
+    );
+    if (res) {
+      const currentFormData = {
+        ...formData,
+        images: res.data,
+      };
+      setFormData(currentFormData);
+    }
+  };
+
+  const generateTags = async () => {
+    const res: any = await http(
+      'https://ff9c-122-187-108-203.ngrok-free.app/creator/content/tags',
+      {
+        method: 'POST',
+        body: {
+          summary: responseData.summary,
+          id: responseData.id,
+          count: 5,
+        },
+      }
+    );
+    if (res) {
+      const currentFormData = {
+        ...formData,
+        tags: res.data,
+      };
+      setFormData(currentFormData);
+    }
   };
 
   return (
@@ -193,39 +262,58 @@ const DrawerForm = () => {
                 </div>
               ) : null}
 
-              {/* <div className='flex flex-1'>
-                <TabData data={responseData.transcription} />
-              </div> */}
-              {/* <div className='grid grid-cols-4 gap-2'>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 10, 11].map((el) => (
-                  <ImageCard
-                    url='https://ssl-static.libsyn.com/p/assets/a/1/f/a/a1fac31cf6d4d71c/SSSF_Logo_3000.jpg'
-                    key={el}
-                    onclick={() => {
-                      updateSelectedImages(el);
-                    }}
-                    selected={imgIds}
-                    id={el}
-                  />
-                ))}
-              </div> */}
+              <div className='flex flex-1'>
+                <TabData
+                  data={{
+                    transcription: responseData.transcription,
+                    summary: responseData.summary,
+                  }}
+                />
+              </div>
+              <div className='grid grid-cols-2 gap-2'>
+                {formData.images.length
+                  ? formData.images.map((el) => (
+                      <ImageCard
+                        url={el}
+                        key={el}
+                        onclick={() => {
+                          updateSelectedImages(el);
+                        }}
+                        selected={imgIds}
+                        id={el}
+                      />
+                    ))
+                  : null}
+              </div>
             </div>
-            {/* <div className='py-3'>
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((el) => {
-                return (
-                  <Chip
-                    key={el}
-                    className='bg--[#252428] border border-gray-500 p-4 ml-2'
-                    size='lg'>
-                    <span>#Chip</span>
-                  </Chip>
-                );
-              })}
-            </div> */}
+            <div className='py-3'>
+              {formData.tags.length
+                ? formData.tags.map((el) => {
+                    return (
+                      <Chip
+                        key={el}
+                        className='bg--[#252428] border border-gray-500 p-4 ml-2'
+                        size='lg'>
+                        <span>#{el}</span>
+                      </Chip>
+                    );
+                  })
+                : null}
+            </div>
             <div className='flex justify-end mt-4 '>
-              <Button className='flex-end bg-gradient-to-r from-[#045CAE] to-[#07156d]'>
-                Next
-              </Button>
+              {formData.images.length ? (
+                <Button
+                  className='flex-end bg-gradient-to-r from-[#045CAE] to-[#07156d]'
+                  onClick={generateTags}>
+                  Generate Tags
+                </Button>
+              ) : (
+                <Button
+                  className='flex-end bg-gradient-to-r from-[#045CAE] to-[#07156d]'
+                  onClick={generateArtWork}>
+                  Generate Artworks
+                </Button>
+              )}
             </div>
           </div>
         </Drawer.Content>
